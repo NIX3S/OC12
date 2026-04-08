@@ -6,15 +6,22 @@ from datetime import datetime
 from urllib.parse import urljoin
 import os
 import re
+import sys 
 
 # CONFIG
 BASE_URL = "https://factuel.afp.com/"
 OUTPUT_PATH = "data/raw/afp_factuel_articles.json"
+BASE_PROJET = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+LOG_FILE = os.path.join(BASE_PROJET, "logs", "extraction.log")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+# éviter doublons si rechargé
+if not logger.handlers:
+    file_handler = logging.FileHandler(LOG_FILE)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -53,7 +60,7 @@ def scrape_article(url):
         response = requests.get(url, headers=HEADERS, timeout=15)
         response.raise_for_status()
     except Exception as e:
-        logging.error(f"Erreur {url}: {e}")
+        logger.error(f"Erreur {url}: {e}")
         return None
     
     soup = BeautifulSoup(response.text, "html.parser")
@@ -91,7 +98,7 @@ def scrape_article(url):
             image_url = urljoin(url, src)
             break
     
-    logging.info(f"Article '{title[:50]}...' → label={label}, text_len={len(text)}")
+    logger.info(f"Article '{title[:50]}...' → label={label}, text_len={len(text)}")
     
     return {
         "id": url,
@@ -113,6 +120,6 @@ def main():
         json.dump(articles, f, ensure_ascii=False, indent=2)
     
     print(f" {len(articles)} articles extraits → {OUTPUT_PATH}")
-
+    
 if __name__ == "__main__":
     main()

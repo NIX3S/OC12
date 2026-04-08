@@ -14,11 +14,17 @@ from urllib.parse import urljoin
 RSS_URL = "https://www.legorafi.fr/feed/"
 OUTPUT_PATH = "data/raw/legorafi_articles.json"
 
-logging.basicConfig(
-    filename="logs/extraction.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+BASE_PROJET = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+LOG_FILE = os.path.join(BASE_PROJET, "logs", "extraction.log")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# éviter doublons si rechargé
+if not logger.handlers:
+    file_handler = logging.FileHandler(LOG_FILE)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
@@ -35,7 +41,7 @@ def parse_article(entry):
         response = requests.get(url, headers=HEADERS, timeout=15)
         response.raise_for_status()
     except Exception as e:
-        logging.error(f"Error fetching {url}: {e}")
+        logger.error(f"Error fetching {url}: {e}")
         return None
     
     soup = BeautifulSoup(response.text, "html.parser")
@@ -79,7 +85,7 @@ def parse_article(entry):
 # MAIN EXTRACTION
 # ----------------------
 def main():
-    logging.info("Starting Le Gorafi extraction")
+    logger.info("Starting Le Gorafi extraction")
     
     print("📡 Récupération flux RSS Le Gorafi...")
     feed = feedparser.parse(RSS_URL)
@@ -104,7 +110,7 @@ def main():
         json.dump(all_articles, f, ensure_ascii=False, indent=2)
     
     print(f"\n🎉 Extraction terminée: {len(all_articles)} articles → {OUTPUT_PATH}")
-    logging.info(f"{len(all_articles)} Le Gorafi articles saved")
+    logger.info(f"{len(all_articles)} Le Gorafi articles saved")
 
 if __name__ == "__main__":
     main()

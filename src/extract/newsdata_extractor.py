@@ -14,10 +14,17 @@ API_KEY = os.getenv("NEWS_data_KEY")
 BASE_URL = "https://newsdata.io/api/1/news"
 OUTPUT_PATH = "data/raw/newsdata_articles.json"
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
+BASE_PROJET = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+LOG_FILE = os.path.join(BASE_PROJET, "logs", "extraction.log")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+# éviter doublons si rechargé
+if not logger.handlers:
+    file_handler = logging.FileHandler(LOG_FILE)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 
 # ----------------------
 # SAFE STRING HELPER
@@ -43,7 +50,7 @@ def fetch_articles(language="fr", page=None):
         response.raise_for_status()
         return response.json()
     except requests.RequestException as e:
-        logging.error(f"API request failed: {e}")
+        logger.error(f"API request failed: {e}")
         return None
 
 # ----------------------
