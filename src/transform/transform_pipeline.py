@@ -12,13 +12,17 @@ from datetime import datetime
 
 RAW_PATH = "data/raw"
 OUTPUT_PATH = "data/processed/cleaned_dataset.json"
+BASE_PROJET = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+LOG_FILE = os.path.join(BASE_PROJET, "logs", "transform.log")
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
-logging.basicConfig(
-    filename="logs/transform.log",
-    level=logging.INFO,
-    format="%(asctime)s - %(levelname)s - %(message)s"
-)
-
+# éviter doublons si rechargé
+if not logger.handlers:
+    file_handler = logging.FileHandler(LOG_FILE)
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
 # ----------------------
 # LOAD DATA
 # ----------------------
@@ -32,7 +36,7 @@ def load_data():
                 data = json.load(f)
                 all_data.extend(data)
 
-    logging.info(f"{len(all_data)} raw articles loaded")
+    logger.info(f"{len(all_data)} raw articles loaded")
     return pd.DataFrame(all_data)
 
 
@@ -90,7 +94,7 @@ def enrich_features(df):
 # ----------------------
 
 def main():
-    logging.info("Starting transformation pipeline")
+    logger.info("Starting transformation pipeline")
 
     df = load_data()
 
@@ -102,9 +106,10 @@ def main():
 
     # Remove rows without text or image
     df = df.dropna(subset=["text", "image_url"])
-
+    logger.info(f"{len(df)} articles après filtrage texte/image")
     # Validate image accessibility
     df["image_valid"] = df["image_url"].apply(validate_image_url)
+    logger.info(f"{sum(df['image_valid'])}/{len(df)} images valides")
     df = df[df["image_valid"] == True]
 
     # Remove duplicates based on URL
@@ -116,7 +121,7 @@ def main():
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
     df.to_json(OUTPUT_PATH, orient="records", force_ascii=False, indent=4)
 
-    logging.info(f"Transformation completed. {len(df)} clean articles saved.")
+    logger.info(f"Transformation completed. {len(df)} clean articles saved.")
     print(f"Pipeline completed: {len(df)} articles ready.")
 
 
